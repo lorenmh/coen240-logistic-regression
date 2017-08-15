@@ -9,6 +9,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 clear all; close all; clc;
+more off;
 data_raw = dlmread('corrupted_2class_iris_dataset.dat');
 
 [N W] = size(data_raw);
@@ -22,11 +23,11 @@ index = randperm(N);
 data = data_raw(index,:);
 
 % used for reporting output
-total_correct_sum = 0;
-iterations_correct_vec = [];
+accuracies = [];
 
-%for k=1:K
-k=1;
+for k=1:K
+  fprintf('On fold: %d\n', k);
+
   % the start/end index of the fold
   test_start_index = (k-1)*NK + 1;
   test_end_index = (test_start_index+NK) - 1;
@@ -53,53 +54,18 @@ k=1;
     w -= delta.';
   end
 
-  sigms = arrayfun(@(z) sigm(z), X*w);
-  class_1 = sigms > 0.5;
-  class_0 = sigms <= 0.5;
+  test_features = test_data(:,1:D);
+  test_X = [repmat(1, length(test_features), 1) test_features];
+  test_classes = test_data(:,W);
 
-  sigms(class_1) = 1;
-  sigms(class_0) = 0;
+  predictions = arrayfun(@(z) sigm(z), test_X*w);
+  predictions(predictions > 0.5) = 1;
+  predictions(predictions <= 0.5) = 0;
 
+  accuracy = sum(test_classes == predictions) / NK;
+  accuracies = vertcat(accuracies, accuracy);
+end
 
-
-  % the sum of 'correct classifications'
-  current_correct_sum = 0;
-
-  % iterate through the test data to compute accuracy
-  %  % the test vector
-  %  x = test_data(i,1:D);
-  %  % the actual class of this example
-  %  class = test_data(i,D+1);
-
-  %  % computes the probability from the discriminants
-  %  xm1 = x.' - u1;
-  %  g1 = -0.5 * xm1.' * inv(cov1) * xm1;
-
-  %  xm2 = x.' - u2;
-  %  g2 = -0.5 * xm2.' * inv(cov2) * xm2;
-
-  %  xm3 = x.' - u3;
-  %  g3 = -0.5 * xm3.' * inv(cov3) * xm3;
-
-  %  % gets the class label of the highest discriminant
-  %  [_,predicted_class] = max([g1, g2, g3]);
-
-  %  % if the class label is correct then increment the counters
-  %  if predicted_class == class
-  %    current_correct_sum += 1;
-  %    total_correct_sum += 1;
-  %  end
-  %end
-
-  % iterations_correct_vec contains the sum of correct classifications for
-  % each iteration of the 10-fold
-  %iterations_correct_vec = vertcat(
-  %  iterations_correct_vec, 
-  %  current_correct_sum
-  %);
-
-%end
-
-%fprintf('Accuracy per iteration =\n');
-%disp(iterations_correct_vec/NK);
-%fprintf('Total Accuracy = %5.4f\n', total_correct_sum/N);
+fprintf('\nAccuracy per iteration =\n');
+disp(accuracies);
+fprintf('Average accuracy = %f\n', sum(accuracies)/K);
